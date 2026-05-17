@@ -1,3 +1,8 @@
+mod decrypt;
+mod encrypt;
+mod generate_keys;
+
+use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
@@ -9,32 +14,17 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Command {
-    /// Generate a new key pair
-    GenerateKeys,
-    /// Encrypt a message
-    Encrypt {
-        /// Input to encrypt
-        input: String,
-    },
-    /// Decrypt a message
-    Decrypt {
-        /// Input to decrypt
-        input: String,
-    },
+    GenerateKeys(generate_keys::GenerateKeysArgs),
+    Encrypt(encrypt::EncryptArgs),
+    Decrypt(decrypt::DecryptArgs),
 }
 
-pub fn run() {
+pub fn run() -> Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Command::GenerateKeys => {
-            println!("generate-keys: generating key pair...");
-        }
-        Command::Encrypt { input } => {
-            println!("encrypt: encrypting \"{}\"", input);
-        }
-        Command::Decrypt { input } => {
-            println!("decrypt: decrypting \"{}\"", input);
-        }
+        Command::GenerateKeys(args) => generate_keys::run(args),
+        Command::Encrypt(args) => encrypt::run(args),
+        Command::Decrypt(args) => decrypt::run(args),
     }
 }

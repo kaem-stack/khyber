@@ -1,5 +1,6 @@
 mod cli;
+mod keys;
 
-fn main() {
-    cli::run();
+fn main() -> anyhow::Result<()> {
+    cli::run()
 }
