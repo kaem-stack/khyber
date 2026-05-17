@@ -23,7 +23,4 @@ impl KemAlgorithm for MlKem768Kem {
         })
     }
 
-    fn name(&self) -> &'static str {
-        "ML-KEM-768"
-    }
 }

@@ -421,9 +421,9 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
 name = "kaem-sdk"
-version = "0.0.1"
+version = "0.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5fd75509fce4e84014baffb1044964e4ff939b1680040bd41f4025dc0f88d0d9"
+checksum = "f913d1c7a7abbd44465d689c009d13aea50afd649fe47b51a5d5de5427018299"
 dependencies = [
  "bincode",
  "bytes",
@@ -464,6 +464,7 @@ dependencies = [
  "kaem-sdk",
  "ml-kem",
  "rand",
+ "tokio",
  "zeroize",
 ]
 

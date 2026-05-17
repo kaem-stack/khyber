@@ -1,7 +1,14 @@
 use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use clap::Args;
+use kaem_sdk::modules::khyber::{
+    generate_keys::GenerateKeysCommand,
+    ipc::{Request, Response},
+    Algorithm as SdkAlgorithm,
+};
+use kaem_sdk::transport;
+use tokio::net::UnixStream;
 
 use crate::keys::{self, Algorithm, KeyGenConfig};
 
@@ -14,22 +21,35 @@ pub struct GenerateKeysArgs {
     pub algorithm: Option<Algorithm>,
 }
 
-pub fn run(args: GenerateKeysArgs) -> Result<()> {
+pub async fn run(args: GenerateKeysArgs, socket: &PathBuf) -> Result<()> {
     let config = KeyGenConfig::new(args.out).with_algorithm(args.algorithm.unwrap_or_default());
-    let keypair = keys::generate(&config)?;
-    keys::save(&keypair, &config)?;
+    let sdk_algorithm = match config.algorithm {
+        Algorithm::MlKem768 => SdkAlgorithm::MlKem768,
+    };
+    let req = Request::GenerateKeys(GenerateKeysCommand { algorithm: sdk_algorithm });
 
-    println!("algorithm:  {}", config.algorithm.name());
-    println!(
-        "public key: {} ({} bytes)",
-        config.out_dir.join("khyber.pub").display(),
-        keypair.public_key.len()
-    );
-    println!(
-        "secret key: {} ({} bytes)",
-        config.out_dir.join("khyber.key").display(),
-        keypair.secret_key.len()
-    );
+    let mut stream = UnixStream::connect(socket).await?;
+    transport::send(&mut stream, &req).await.map_err(|e| anyhow::anyhow!("{e}"))?;
+    let response: Response = transport::receive(&mut stream).await.map_err(|e| anyhow::anyhow!("{e}"))?;
+
+    match response {
+        Response::KeysGenerated(keypair) => {
+            keys::save(&keypair, &config)?;
+            println!("algorithm:  {}", config.algorithm.name());
+            println!(
+                "public key: {} ({} bytes)",
+                config.out_dir.join("khyber.pub").display(),
+                keypair.public_key.len()
+            );
+            println!(
+                "secret key: {} ({} bytes)",
+                config.out_dir.join("khyber.key").display(),
+                keypair.secret_key.len()
+            );
+        }
+        Response::Error(e) => bail!("daemon error: {e}"),
+        _ => bail!("unexpected response"),
+    }
 
     Ok(())
 }

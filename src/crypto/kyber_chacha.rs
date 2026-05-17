@@ -72,7 +72,4 @@ impl EncryptionAlgorithm for KyberChaCha {
         Ok(DecryptedEvent { plaintext })
     }
 
-    fn name(&self) -> &'static str {
-        "ML-KEM-768 + ChaCha20-Poly1305"
-    }
 }

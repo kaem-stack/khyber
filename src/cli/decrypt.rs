@@ -1,10 +1,13 @@
 use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use base64ct::{Base64, Encoding as _};
 use clap::Args;
+use kaem_sdk::modules::khyber::decrypt::DecryptCommand;
+use kaem_sdk::transport;
+use tokio::net::UnixStream;
 
-use crate::crypto::{self, EncryptConfig};
+use kaem_sdk::modules::khyber::ipc::{Request, Response};
 
 #[derive(Args)]
 pub struct DecryptArgs {
@@ -20,17 +23,27 @@ pub struct DecryptArgs {
     pub output: Option<PathBuf>,
 }
 
-pub fn run(args: DecryptArgs) -> Result<()> {
+pub async fn run(args: DecryptArgs, socket: &PathBuf) -> Result<()> {
     let secret_key = std::fs::read(&args.key)?;
     let ciphertext = Base64::decode_vec(&args.input)
         .map_err(|e| anyhow::anyhow!("invalid base64: {e}"))?;
 
-    let config = EncryptConfig::default();
-    let event = crypto::decrypt(&config, &secret_key, &ciphertext)?;
+    let req = Request::Decrypt(DecryptCommand {
+        ciphertext,
+        secret_key,
+    });
 
-    match args.output {
-        Some(path) => std::fs::write(path, &event.plaintext)?,
-        None => println!("{}", String::from_utf8_lossy(&event.plaintext)),
+    let mut stream = UnixStream::connect(socket).await?;
+    transport::send(&mut stream, &req).await.map_err(|e| anyhow::anyhow!("{e}"))?;
+    let response: Response = transport::receive(&mut stream).await.map_err(|e| anyhow::anyhow!("{e}"))?;
+
+    match response {
+        Response::Decrypted(event) => match args.output {
+            Some(path) => std::fs::write(path, &event.plaintext)?,
+            None => println!("{}", String::from_utf8_lossy(&event.plaintext)),
+        },
+        Response::Error(e) => bail!("daemon error: {e}"),
+        _ => bail!("unexpected response"),
     }
 
     Ok(())
