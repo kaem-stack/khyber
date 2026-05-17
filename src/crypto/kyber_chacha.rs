@@ -7,6 +7,7 @@ use ml_kem::{
     kem::{Decapsulate, Encapsulate, Key},
     ml_kem_768,
 };
+use zeroize::Zeroizing;
 
 use super::algorithm::EncryptionAlgorithm;
 
@@ -25,6 +26,7 @@ impl EncryptionAlgorithm for KyberChaCha {
             .map_err(|_| anyhow!("malformed public key"))?;
 
         let (kem_ct, shared_key) = ek.encapsulate();
+        let shared_key = Zeroizing::new(shared_key.to_vec());
 
         let mut nonce_bytes = [0u8; NONCE_SIZE];
         getrandom::fill(&mut nonce_bytes).map_err(|e| anyhow!("nonce generation failed: {e}"))?;
@@ -58,7 +60,7 @@ impl EncryptionAlgorithm for KyberChaCha {
         let kem_ct: &ml_kem_768::Ciphertext = kem_ct_bytes
             .try_into()
             .map_err(|_| anyhow!("invalid KEM ciphertext length"))?;
-        let shared_key = dk.decapsulate(kem_ct);
+        let shared_key = Zeroizing::new(dk.decapsulate(kem_ct).to_vec());
 
         let cipher = ChaCha20Poly1305::new_from_slice(&shared_key)
             .map_err(|_| anyhow!("invalid shared key length"))?;
