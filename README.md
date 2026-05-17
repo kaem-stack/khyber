@@ -63,13 +63,44 @@ khyber encrypt "hello world" --key ~/.khyber/khyber.pub --output message.enc
 
 ### decrypt
 
-Decrypt a ciphertext using the secret key.
+Decrypt a base64-encoded ciphertext using the secret key.
 
 ```bash
-khyber decrypt <INPUT> --key <SECRET_KEY_FILE>
+khyber decrypt <CIPHERTEXT> --key <SECRET_KEY_FILE> [--output <FILE>]
 ```
 
-> Decrypt is not yet implemented.
+| Argument / Flag | Short | Description |
+|---|---|---|
+| `<CIPHERTEXT>` | | Base64-encoded ciphertext to decrypt *(required)* |
+| `--key` | `-k` | Path to the secret key file (`khyber.key`) *(required)* |
+| `--output` | `-o` | Write plaintext to file instead of stdout |
+
+**Example:**
+```bash
+# Decrypt to stdout
+khyber decrypt <CIPHERTEXT> --key ~/.khyber/khyber.key
+
+# Decrypt to a file
+khyber decrypt <CIPHERTEXT> --key ~/.khyber/khyber.key --output message.txt
+```
+
+---
+
+## Full example
+
+```bash
+# 1. Generate a keypair
+khyber generate-keys --out ~/.khyber/
+
+# 2. Encrypt a message
+khyber encrypt "hello world" --key ~/.khyber/khyber.pub
+
+# 3. Decrypt it
+khyber decrypt <ciphertext> --key ~/.khyber/khyber.key
+
+# Round trip in one line
+khyber decrypt $(khyber encrypt "hello world" --key ~/.khyber/khyber.pub) --key ~/.khyber/khyber.key
+```
 
 ---
 

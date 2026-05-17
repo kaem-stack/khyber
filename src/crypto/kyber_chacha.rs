@@ -4,13 +4,16 @@ use chacha20poly1305::{
     ChaCha20Poly1305, Nonce,
 };
 use ml_kem::{
-    kem::{Encapsulate, Key},
+    kem::{Decapsulate, Encapsulate, Key},
     ml_kem_768,
 };
 
 use super::algorithm::EncryptionAlgorithm;
 
-// Output wire format: [KEM ciphertext: 1088 bytes] [nonce: 12 bytes] [AEAD ciphertext + tag]
+// Wire format: [KEM ciphertext: 1088 bytes] [nonce: 12 bytes] [AEAD ciphertext + tag]
+const KEM_CT_SIZE: usize = 1088;
+const NONCE_SIZE: usize = 12;
+
 pub struct KyberChaCha;
 
 impl EncryptionAlgorithm for KyberChaCha {
@@ -23,7 +26,7 @@ impl EncryptionAlgorithm for KyberChaCha {
 
         let (kem_ct, shared_key) = ek.encapsulate();
 
-        let mut nonce_bytes = [0u8; 12];
+        let mut nonce_bytes = [0u8; NONCE_SIZE];
         getrandom::fill(&mut nonce_bytes).map_err(|e| anyhow!("nonce generation failed: {e}"))?;
 
         let cipher = ChaCha20Poly1305::new_from_slice(&shared_key)
@@ -37,6 +40,33 @@ impl EncryptionAlgorithm for KyberChaCha {
         output.extend_from_slice(&encrypted);
 
         Ok(output)
+    }
+
+    fn decrypt(&self, secret_key: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>> {
+        if ciphertext.len() < KEM_CT_SIZE + NONCE_SIZE {
+            return Err(anyhow!("ciphertext too short to be valid"));
+        }
+
+        let (kem_ct_bytes, rest) = ciphertext.split_at(KEM_CT_SIZE);
+        let (nonce_bytes, encrypted) = rest.split_at(NONCE_SIZE);
+
+        let seed: &Key<ml_kem_768::DecapsulationKey> = secret_key
+            .try_into()
+            .map_err(|_| anyhow!("invalid secret key: expected 64 bytes"))?;
+        let dk = ml_kem_768::DecapsulationKey::from_seed(*seed);
+
+        let kem_ct: &ml_kem_768::Ciphertext = kem_ct_bytes
+            .try_into()
+            .map_err(|_| anyhow!("invalid KEM ciphertext length"))?;
+        let shared_key = dk.decapsulate(kem_ct);
+
+        let cipher = ChaCha20Poly1305::new_from_slice(&shared_key)
+            .map_err(|_| anyhow!("invalid shared key length"))?;
+        let plaintext = cipher
+            .decrypt(Nonce::from_slice(nonce_bytes), encrypted)
+            .map_err(|_| anyhow!("decryption failed: wrong key or corrupted ciphertext"))?;
+
+        Ok(plaintext)
     }
 
     fn name(&self) -> &'static str {
