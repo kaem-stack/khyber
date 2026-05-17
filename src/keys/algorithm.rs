@@ -1,11 +1,7 @@
 use anyhow::Result;
-
-pub struct KeyPair {
-    pub public: Vec<u8>,
-    pub secret: Vec<u8>,
-}
+use kaem_sdk::modules::khyber::generate_keys::KeysGeneratedEvent;
 
 pub trait KemAlgorithm {
-    fn generate(&self) -> Result<KeyPair>;
+    fn generate(&self) -> Result<KeysGeneratedEvent>;
     fn name(&self) -> &'static str;
 }

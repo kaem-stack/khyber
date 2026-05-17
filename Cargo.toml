@@ -12,3 +12,4 @@ getrandom = "0.4.2"
 ml-kem = { version = "0.3.2", features = ["getrandom", "zeroize"] }
 zeroize = "1"
 rand = "0.10.1"
+kaem-sdk = "0.0.1"

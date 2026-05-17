@@ -3,6 +3,7 @@ use chacha20poly1305::{
     aead::{Aead, KeyInit},
     ChaCha20Poly1305, Nonce,
 };
+use kaem_sdk::modules::khyber::{decrypt::DecryptedEvent, encrypt::EncryptedEvent};
 use ml_kem::{
     kem::{Decapsulate, Encapsulate, Key},
     ml_kem_768,
@@ -18,7 +19,7 @@ const NONCE_SIZE: usize = 12;
 pub struct KyberChaCha;
 
 impl EncryptionAlgorithm for KyberChaCha {
-    fn encrypt(&self, public_key: &[u8], plaintext: &[u8]) -> Result<Vec<u8>> {
+    fn encrypt(&self, public_key: &[u8], plaintext: &[u8]) -> Result<EncryptedEvent> {
         let ek_bytes: &Key<ml_kem_768::EncapsulationKey> = public_key
             .try_into()
             .map_err(|_| anyhow!("invalid public key: expected 1184 bytes for ML-KEM-768"))?;
@@ -37,14 +38,14 @@ impl EncryptionAlgorithm for KyberChaCha {
             .encrypt(Nonce::from_slice(&nonce_bytes), plaintext)
             .map_err(|e| anyhow!("symmetric encryption failed: {e}"))?;
 
-        let mut output = kem_ct.to_vec();
-        output.extend_from_slice(&nonce_bytes);
-        output.extend_from_slice(&encrypted);
+        let mut ciphertext = kem_ct.to_vec();
+        ciphertext.extend_from_slice(&nonce_bytes);
+        ciphertext.extend_from_slice(&encrypted);
 
-        Ok(output)
+        Ok(EncryptedEvent { ciphertext })
     }
 
-    fn decrypt(&self, secret_key: &[u8], ciphertext: &[u8]) -> Result<Vec<u8>> {
+    fn decrypt(&self, secret_key: &[u8], ciphertext: &[u8]) -> Result<DecryptedEvent> {
         if ciphertext.len() < KEM_CT_SIZE + NONCE_SIZE {
             return Err(anyhow!("ciphertext too short to be valid"));
         }
@@ -68,7 +69,7 @@ impl EncryptionAlgorithm for KyberChaCha {
             .decrypt(Nonce::from_slice(nonce_bytes), encrypted)
             .map_err(|_| anyhow!("decryption failed: wrong key or corrupted ciphertext"))?;
 
-        Ok(plaintext)
+        Ok(DecryptedEvent { plaintext })
     }
 
     fn name(&self) -> &'static str {

@@ -24,8 +24,8 @@ pub fn run(args: EncryptArgs) -> Result<()> {
     let public_key = std::fs::read(&args.key)?;
     let config = EncryptConfig::default();
 
-    let ciphertext = crypto::encrypt(&config, &public_key, args.message.as_bytes())?;
-    let encoded = Base64::encode_string(&ciphertext);
+    let event = crypto::encrypt(&config, &public_key, args.message.as_bytes())?;
+    let encoded = Base64::encode_string(&event.ciphertext);
 
     match args.output {
         Some(path) => std::fs::write(path, &encoded)?,

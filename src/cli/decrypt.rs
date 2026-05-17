@@ -26,11 +26,11 @@ pub fn run(args: DecryptArgs) -> Result<()> {
         .map_err(|e| anyhow::anyhow!("invalid base64: {e}"))?;
 
     let config = EncryptConfig::default();
-    let plaintext = crypto::decrypt(&config, &secret_key, &ciphertext)?;
+    let event = crypto::decrypt(&config, &secret_key, &ciphertext)?;
 
     match args.output {
-        Some(path) => std::fs::write(path, &plaintext)?,
-        None => println!("{}", String::from_utf8_lossy(&plaintext)),
+        Some(path) => std::fs::write(path, &event.plaintext)?,
+        None => println!("{}", String::from_utf8_lossy(&event.plaintext)),
     }
 
     Ok(())

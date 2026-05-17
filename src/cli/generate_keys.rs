@@ -23,12 +23,12 @@ pub fn run(args: GenerateKeysArgs) -> Result<()> {
     println!(
         "public key: {} ({} bytes)",
         config.out_dir.join("khyber.pub").display(),
-        keypair.public.len()
+        keypair.public_key.len()
     );
     println!(
         "secret key: {} ({} bytes)",
         config.out_dir.join("khyber.key").display(),
-        keypair.secret.len()
+        keypair.secret_key.len()
     );
 
     Ok(())
