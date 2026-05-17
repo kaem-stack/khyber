@@ -5,6 +5,9 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.102"
+base64ct = { version = "1.8.3", features = ["alloc"] }
+chacha20poly1305 = "0.10.1"
 clap = { version = "4", features = ["derive"] }
-ml-kem = "0.3.2"
+getrandom = "0.4.2"
+ml-kem = { version = "0.3.2", features = ["getrandom"] }
 rand = "0.10.1"
